@@ -14,16 +14,13 @@ $search = trim($_GET['search'] ?? '');
 $page = max(1, (int)$_GET['page'] ?? 1);
 $perPage = 15;
 
-// 先获取所有周期，用于判断是否有历史周期
 $allPeriods = $db->query("SELECT * FROM periods ORDER BY start_time DESC")->fetchAll();
 
 if (empty($periodId)) {
-    // 先尝试获取当前周期
     $currentPeriod = getCurrentPeriod();
     if ($currentPeriod) {
         $periodId = $currentPeriod['id'];
     } elseif (!empty($allPeriods)) {
-        // 如果没有当前周期，就选择第一个历史周期
         $periodId = $allPeriods[0]['id'];
     }
 }
@@ -41,9 +38,7 @@ if ($periodId) {
 
 $groups = $db->query("SELECT id, name FROM `groups` ORDER BY name ASC")->fetchAll();
 
-// 如果没有小组，则跳过选择逻辑
 if (!empty($groups)) {
-    // 如果没有选中小组，或者选中的小组不存在，则默认选择第一个
     if (!$groupId || !in_array($groupId, array_column($groups, 'id'))) {
         $groupId = $groups[0]['id'];
     }
@@ -123,19 +118,8 @@ foreach ($groups as $g) {
 
 $urlPattern = 'group_personal.php?group_id=' . $groupId . '&period_id=' . $periodId . '&search=' . urlencode($search) . '&page={page}';
 
-pageHeader('组内个人榜');
+require_once __DIR__ . '/header.php';
 ?>
-
-<div class="mdui-toolbar mdui-color-theme" style="margin-bottom: 16px;">
-    <?php renderSidebarToggle(); ?>
-    <span class="mdui-typo-title">组内个人榜</span>
-    <div class="mdui-toolbar-spacer"></div>
-    <a href="admin_login.php" class="mdui-btn mdui-ripple mdui-text-color-white">
-        <i class="mdui-icon material-icons" style="vertical-align: middle;">admin_panel_settings</i>
-        后台管理
-    </a>
-</div>
-<div class="mdui-container" style="padding-top: 16px; padding-bottom: 16px;">
 
 <?php if (empty($allPeriods)): ?>
     <div class="empty-state">
@@ -253,6 +237,5 @@ pageHeader('组内个人榜');
     <?php endif; ?>
 
 <?php endif; ?>
-</div>
 
-<?php pageFooter(); ?>
+<?php require_once __DIR__ . '/footer.php'; ?>

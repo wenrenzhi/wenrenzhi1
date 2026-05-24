@@ -12,16 +12,13 @@ $search = trim($_GET['search'] ?? '');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 15;
 
-// 先获取所有周期，用于判断是否有历史周期
 $allPeriods = $db->query("SELECT * FROM periods ORDER BY start_time DESC")->fetchAll();
 
 if (empty($periodId)) {
-    // 先尝试获取当前周期
     $current = getCurrentPeriod();
     if ($current) {
         $periodId = $current['id'];
     } elseif (!empty($allPeriods)) {
-        // 如果没有当前周期，就选择第一个历史周期
         $periodId = $allPeriods[0]['id'];
     }
 }
@@ -97,20 +94,8 @@ if ($periodId) {
     }
 }
 
-pageHeader("个人榜");
+require_once __DIR__ . '/header.php';
 ?>
-
-<div class="mdui-toolbar mdui-color-theme">
-    <?php renderSidebarToggle(); ?>
-    <span class="mdui-typo-title">个人榜</span>
-    <div class="mdui-toolbar-spacer"></div>
-    <a href="admin_login.php" class="mdui-btn mdui-ripple mdui-text-color-white">
-        <i class="mdui-icon material-icons" style="vertical-align: middle;">admin_panel_settings</i>
-        后台管理
-    </a>
-</div>
-
-<div class="mdui-container" style="padding-top: 16px; padding-bottom: 16px;">
 
 <?php if (empty($allPeriods)): ?>
     <div class="empty-state">
@@ -236,6 +221,4 @@ pageHeader("个人榜");
 
 <?php endif; ?>
 
-</div>
-
-<?php pageFooter(); ?>
+<?php require_once __DIR__ . '/footer.php'; ?>

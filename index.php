@@ -59,20 +59,8 @@ if ($period) {
     $topGroup = $stmt->fetch();
 }
 
-pageHeader("首页");
+require_once __DIR__ . '/header.php';
 ?>
-
-<div class="mdui-toolbar mdui-color-theme">
-    <?php renderSidebarToggle(); ?>
-    <span class="mdui-typo-title">首页</span>
-    <div class="mdui-toolbar-spacer"></div>
-    <a href="admin/login.php" class="mdui-btn mdui-ripple mdui-text-color-white">
-        <i class="mdui-icon material-icons" style="vertical-align: middle;">admin_panel_settings</i>
-        后台管理
-    </a>
-</div>
-
-<div class="mdui-container" style="padding-top: 16px; padding-bottom: 16px;">
 
 <?php if (!$period): ?>
     <div class="empty-state">
@@ -226,6 +214,4 @@ pageHeader("首页");
 
 <?php endif; ?>
 
-</div>
-
-<?php pageFooter(); ?>
+<?php require_once __DIR__ . '/footer.php'; ?>
