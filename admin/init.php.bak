@@ -1,0 +1,325 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (file_exists(__DIR__ . '/../config.php')) {
+    require_once __DIR__ . '/../config.php';
+}
+
+function getDB() {
+    static $pdo = null;
+    if ($pdo === null) {
+        $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ];
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+    }
+    return $pdo;
+}
+
+function isInstalled() {
+    if (!file_exists(__DIR__ . '/config.php')) return false;
+    if (!defined('DB_HOST')) return false;
+    try {
+        $db = getDB();
+        $db->query("SELECT 1 FROM users LIMIT 1");
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function requireLogin() {
+    if (empty($_SESSION['user_id'])) {
+        header('Location: login.php');
+        exit;
+    }
+}
+
+function requireSuperAdmin() {
+    requireLogin();
+    if (empty($_SESSION['is_super'])) {
+        jsonError('您没有该操作的权限，需要超级管理员权限', 403);
+    }
+}
+
+function checkPermission($module) {
+    if (!empty($_SESSION['is_super'])) return true;
+    $permissions = $_SESSION['permissions'] ?? '{}';
+    if (is_string($permissions)) $permissions = json_decode($permissions, true);
+    return !empty($permissions[$module]);
+}
+
+function requirePermission($module) {
+    requireLogin();
+    if (!checkPermission($module)) {
+        jsonError('您没有该操作的权限', 403);
+    }
+}
+
+function h($str) {
+    return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+}
+
+function jsonResponse($data, $code = 200) {
+    http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function jsonError($msg, $code = 400) {
+    jsonResponse(['error' => $msg], $code);
+}
+
+function getIP() {
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($ips[0]);
+    }
+    return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+}
+
+function logOperation($userId, $action, $detail) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("INSERT INTO operation_logs (user_id, action, detail, ip, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $stmt->execute([$userId, $action, json_encode($detail, JSON_UNESCAPED_UNICODE), getIP()]);
+    } catch (Exception $e) {}
+}
+
+function smartTime($datetime) {
+    if (empty($datetime)) return '';
+    $ts = strtotime($datetime);
+    $diff = time() - $ts;
+    if ($diff < 60) return '刚刚';
+    if ($diff < 3600) return floor($diff / 60) . '分钟前';
+    if ($diff < 86400) return floor($diff / 3600) . '小时前';
+    if ($diff < 172800) return '昨天 ' . date('H:i', $ts);
+    if ($diff < 604800) return floor($diff / 86400) . '天前';
+    return date('Y-m-d H:i', $ts);
+}
+
+function getCurrentPeriod() {
+    $db = getDB();
+    $stmt = $db->query("SELECT * FROM periods WHERE status = 1 LIMIT 1");
+    return $stmt->fetch();
+}
+
+function getPeriodDays($period) {
+    if (!$period) return 0;
+    $start = strtotime($period['start_time']);
+    $end = $period['end_time'] ? strtotime($period['end_time']) : time();
+    return max(1, ceil(($end - $start) / 86400));
+}
+
+function getStudentStats($studentId, $periodId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'add' AND status = 1 THEN score ELSE 0 END), 0) AS total_add,
+            COALESCE(SUM(CASE WHEN type = 'deduct' AND status = 1 THEN score ELSE 0 END), 0) AS total_deduct
+        FROM records 
+        WHERE student_id = ? AND period_id = ? AND status = 1
+    ");
+    $stmt->execute([$studentId, $periodId]);
+    $row = $stmt->fetch();
+    $totalAdd = floatval($row['total_add']);
+    $totalDeduct = floatval($row['total_deduct']);
+    $net = $totalAdd - $totalDeduct;
+    return [
+        'total_add' => $totalAdd,
+        'total_deduct' => $totalDeduct,
+        'net' => $net,
+        'balance' => $net  // balance = base + net; base added at display
+    ];
+}
+
+function getGroupStats($groupId, $periodId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT 
+            COALESCE(SUM(CASE WHEN r.type = 'add' AND r.status = 1 THEN r.score ELSE 0 END), 0) AS total_add,
+            COALESCE(SUM(CASE WHEN r.type = 'deduct' AND r.status = 1 THEN r.score ELSE 0 END), 0) AS total_deduct,
+            COUNT(DISTINCT s.id) AS member_count
+        FROM students s
+        LEFT JOIN records r ON r.student_id = s.id AND r.period_id = ? AND r.status = 1
+        WHERE s.group_id = ? AND s.status = 1
+    ");
+    $stmt->execute([$periodId, $groupId]);
+    return $stmt->fetch();
+}
+
+function getScoreClass($value) {
+    if ($value > 0) return 'mdui-text-color-green';
+    if ($value < 0) return 'mdui-text-color-blue';
+    return 'mdui-text-color-black';
+}
+
+function formatScore($value) {
+    $class = getScoreClass($value);
+    $prefix = $value > 0 ? '+' : '';
+    return '<span class="' . $class . '">' . $prefix . number_format($value, 1) . '</span>';
+}
+
+function pageHeader($title, $bodyClass = '') {
+    $currentScript = basename($_SERVER['SCRIPT_NAME']);
+    ?>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><?php echo h($title); ?> - <?php echo defined('SITE_TITLE') ? SITE_TITLE : '班级操行分'; ?></title>
+    <link rel="stylesheet" href="https://cdn.hoha.top/mdui-v1.0.2/css/mdui.min.css">
+    <script src="https://cdn.hoha.top/js/jquery-4.0.0.min.js"></script>
+    <script src="https://cdn.hoha.top/mdui-v1.0.2/js/mdui.min.js"></script>
+    <style>
+        .mdui-drawer { max-width: 280px; }
+        .mdui-drawer .mdui-list-item { border-radius: 8px; margin: 2px 8px; }
+        .mdui-drawer .mdui-list-item.mdui-list-item-active { background: rgba(33,150,243,0.12); color: #2196F3; }
+        .score-positive { color: #4CAF50; font-weight: bold; }
+        .score-negative { color: #2196F3; font-weight: bold; }
+        .score-zero { color: #212121; font-weight: bold; }
+        .card-stat { text-align: center; padding: 16px; }
+        .card-stat .stat-value { font-size: 28px; font-weight: bold; margin: 8px 0; }
+        .card-stat .stat-label { font-size: 14px; color: #757575; }
+        .rank-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .rank-mvp { background: #FFD700; color: #333; }
+        .mdui-table td, .mdui-table th { white-space: nowrap; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #9e9e9e; }
+        .empty-state i { font-size: 64px; display: block; margin-bottom: 16px; }
+        .period-info { padding: 16px; background: #fff; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #2196F3; }
+        .top3-preview { display: flex; gap: 16px; flex-wrap: wrap; }
+        .top3-preview .mdui-card { flex: 1; min-width: 250px; }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 4px; padding: 16px 0; flex-wrap: wrap; }
+        .pagination a, .pagination span { display: inline-block; min-width: 36px; height: 36px; line-height: 36px; text-align: center; border-radius: 4px; text-decoration: none; color: #333; }
+        .pagination a { background: #f5f5f5; }
+        .pagination a:hover { background: #e0e0e0; }
+        .pagination .active { background: #2196F3; color: #fff; }
+        .pagination .disabled { color: #ccc; background: #fafafa; }
+        @media (max-width: 600px) {
+            .top3-preview { flex-direction: column; }
+            .mdui-table { font-size: 13px; }
+        }
+    </style>
+</head>
+<body class="mdui-theme-primary-indigo mdui-theme-accent-blue mdui-drawer-body-left <?php echo $bodyClass; ?>">
+    <div class="mdui-drawer mdui-shadow-3" id="sidebar-drawer">
+        <div class="mdui-list" style="padding-top: 16px;">
+            <div class="mdui-list-item mdui-typo-title" style="font-weight: bold; font-size: 18px;">
+                <?php echo defined('SITE_TITLE') ? h(SITE_TITLE) : '班级操行分'; ?>
+            </div>
+            <div class="mdui-divider" style="margin: 8px 0;"></div>
+            <?php
+            $navItems = [
+                'index.php' => ['icon' => 'home', 'text' => '首页'],
+                'personal.php' => ['icon' => 'person', 'text' => '个人榜'],
+                'group.php' => ['icon' => 'group', 'text' => '小组榜'],
+                'group_personal.php' => ['icon' => 'group_work', 'text' => '组内个人榜'],
+            ];
+            foreach ($navItems as $href => $item) {
+                $active = ($currentScript === $href) ? ' mdui-list-item-active' : '';
+                echo '<a href="' . $href . '" class="mdui-list-item mdui-ripple' . $active . '">';
+                echo '<i class="mdui-list-item-icon mdui-icon material-icons">' . $item['icon'] . '</i>';
+                echo '<div class="mdui-list-item-content">' . $item['text'] . '</div>';
+                echo '</a>';
+            }
+            ?>
+            <div class="mdui-divider" style="margin: 8px 0;"></div>
+            <?php
+            $period = getCurrentPeriod();
+            if ($period):
+                $days = getPeriodDays($period);
+            ?>
+            <div class="mdui-list-item">
+                <i class="mdui-list-item-icon mdui-icon material-icons">date_range</i>
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title">当前周期</div>
+                    <div class="mdui-list-item-text mdui-text-color-blue">
+                        开始：<?php echo date('Y-m-d H:i', strtotime($period['start_time'])); ?>
+                    </div>
+                    <div class="mdui-list-item-text">已持续 <?php echo $days; ?> 天</div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="mdui-list-item">
+                <i class="mdui-list-item-icon mdui-icon material-icons">info</i>
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-text">暂无进行中的统计周期</div>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+}
+
+function pageFooter() {
+    ?>
+    <script>
+    $(function() {
+        mdui.mutation();
+    });
+    </script>
+</body>
+</html>
+    <?php
+}
+
+function renderSidebarToggle() {
+    ?>
+    <button class="mdui-btn mdui-btn-icon mdui-color-theme" mdui-drawer="{target: '#sidebar-drawer', swipe: true}">
+        <i class="mdui-icon material-icons">menu</i>
+    </button>
+    <?php
+}
+
+function renderPagination($total, $page, $perPage, $urlPattern) {
+    $totalPages = ceil($total / $perPage);
+    if ($totalPages <= 1) return;
+    echo '<div class="pagination">';
+    if ($page > 1) {
+        echo '<a href="' . str_replace('{page}', $page - 1, $urlPattern) . '">上一页</a>';
+    } else {
+        echo '<span class="disabled">上一页</span>';
+    }
+    for ($i = 1; $i <= $totalPages; $i++) {
+        if ($i == $page) {
+            echo '<span class="active">' . $i . '</span>';
+        } else {
+            echo '<a href="' . str_replace('{page}', $i, $urlPattern) . '">' . $i . '</a>';
+        }
+    }
+    if ($page < $totalPages) {
+        echo '<a href="' . str_replace('{page}', $page + 1, $urlPattern) . '">下一页</a>';
+    } else {
+        echo '<span class="disabled">下一页</span>';
+    }
+    echo '</div>';
+}
+
+function renderPeriodSelector($name, $defaultCurrent = true) {
+    $db = getDB();
+    $periods = $db->query("SELECT id, start_time, end_time, status FROM periods ORDER BY start_time DESC")->fetchAll();
+    $currentPeriod = getCurrentPeriod();
+    $selected = isset($_GET[$name]) ? $_GET[$name] : ($defaultCurrent && $currentPeriod ? $currentPeriod['id'] : '');
+    ?>
+    <div class="mdui-textfield mdui-textfield-floating-label" style="min-width: 260px;">
+        <i class="mdui-icon material-icons" style="position:absolute;top:50%;transform:translateY(-50%);">date_range</i>
+        <select class="mdui-select" name="<?php echo $name; ?>" id="<?php echo $name; ?>" onchange="this.form.submit()" style="padding-left:32px;">
+            <?php foreach ($periods as $p):
+                $label = date('Y-m-d H:i', strtotime($p['start_time'])) . ' ~ ' . ($p['end_time'] ? date('Y-m-d H:i', strtotime($p['end_time'])) : '进行中');
+                if ($p['status'] == 1) $label .= ' [当前]';
+            ?>
+            <option value="<?php echo $p['id']; ?>" <?php echo $selected == $p['id'] ? 'selected' : ''; ?>><?php echo h($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <label>统计周期</label>
+    </div>
+    <?php
+}

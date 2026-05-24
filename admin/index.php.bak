@@ -1,0 +1,63 @@
+<?php
+require_once __DIR__ . '/../init.php';
+requireLogin();
+
+$page = $_GET['page'] ?? 'dashboard';
+
+if ($page === 'users') requireSuperAdmin();
+if ($page === 'logs') requirePermission('logs');
+
+$mustChangePwd = !empty($_SESSION['must_change_pwd']);
+$isSuperAdmin = !empty($_SESSION['is_super']);
+$currentUser = $_SESSION['username'] ?? '';
+$currentUserId = $_SESSION['user_id'] ?? 0;
+
+$navItems = [
+    'dashboard' => ['icon' => 'home', 'text' => '首页'],
+    'students'  => ['icon' => 'people', 'text' => '同学管理'],
+    'groups'    => ['icon' => 'group_work', 'text' => '小组管理'],
+    'scoring'   => ['icon' => 'edit_note', 'text' => '加分扣分'],
+    'periods'   => ['icon' => 'date_range', 'text' => '统计周期'],
+];
+if ($isSuperAdmin) {
+    $navItems['users'] = ['icon' => 'manage_accounts', 'text' => '用户管理'];
+}
+if (checkPermission('logs')) {
+    $navItems['logs'] = ['icon' => 'history', 'text' => '操作日志'];
+}
+
+require_once __DIR__ . '/header.php';
+
+switch ($page) {
+    case 'dashboard':
+        require_once __DIR__ . '/pages/dashboard.php';
+        break;
+    case 'students':
+        require_once __DIR__ . '/pages/students.php';
+        break;
+    case 'groups':
+        require_once __DIR__ . '/pages/groups.php';
+        break;
+    case 'scoring':
+        require_once __DIR__ . '/pages/scoring.php';
+        break;
+    case 'periods':
+        require_once __DIR__ . '/pages/periods.php';
+        break;
+    case 'users':
+        if ($isSuperAdmin) {
+            require_once __DIR__ . '/pages/users.php';
+        }
+        break;
+    case 'logs':
+        if (checkPermission('logs')) {
+            require_once __DIR__ . '/pages/logs.php';
+        }
+        break;
+    default:
+        require_once __DIR__ . '/pages/dashboard.php';
+        break;
+}
+
+require_once __DIR__ . '/footer.php';
+?>
