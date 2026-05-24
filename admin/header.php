@@ -11,150 +11,118 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
     <script src="https://cdn.hoha.top/js/jquery-4.0.0.min.js"></script>
     <script src="https://cdn.hoha.top/mdui-v1.0.2/js/mdui.min.js"></script>
     <style>
-        /* 基础样式保留 */
         body { 
             background: #f5f5f5; 
             margin: 0;
             padding: 0;
         }
-        
-        /* 工具栏样式 */
         .toolbar-title { 
             font-size: 20px; 
             font-weight: 500; 
             color: #fff; 
         }
-        
-        /* 抽屉样式 - 参考示例调整 */
         .mdui-drawer { 
             width: 280px; 
         }
-        
         .mdui-drawer .mdui-list {
-            margin-bottom: 68px; /* 底部留出空间 */
+            margin-bottom: 68px;
         }
-        
         .mdui-drawer .mdui-list-item { 
             border-radius: 8px; 
             margin: 2px 8px; 
-            padding-left: 16px; /* 统一内边距 */
+            padding-left: 16px;
         }
-        
-        .mdui-drawer .mdui-list-item mdui-list-item-active { 
+        .mdui-drawer .mdui-list-item.mdui-list-item-active { 
             background: rgba(33,150,243,0.12); 
             color: #2196F3; 
         }
-        
-        /* 折叠面板样式（参考示例的折叠菜单） */
         .mdui-collapse-item-header {
             padding-left: 16px;
         }
-        
         .mdui-collapse-item-body .mdui-list-item {
-            padding-left: 40px; /* 子菜单缩进 */
+            padding-left: 40px;
         }
-        
-        /* 原有其他样式保留 */
         .admin-container { 
             max-width: 1200px; 
             margin: 0 auto; 
             padding: 16px; 
         }
-        
         .admin-header { 
             margin-bottom: 24px; 
         }
-        
         .admin-header h3 { 
             margin: 0 0 8px 0; 
             font-size: 24px; 
         }
-        
         .admin-header p { 
             margin: 0; 
             color: #757575; 
         }
-        
         .quick-actions { 
             display: flex; 
             gap: 16px; 
             flex-wrap: wrap; 
             margin-bottom: 24px; 
         }
-        
         .quick-actions .mdui-card { 
             flex: 1; 
             min-width: 200px; 
             cursor: pointer; 
             transition: box-shadow .2s; 
         }
-        
         .quick-actions .mdui-card:hover { 
             box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
         }
-        
         .quick-actions .mdui-card-content { 
             text-align: center; 
             padding: 24px 16px; 
         }
-        
         .stat-cards { 
             display: flex; 
             gap: 16px; 
             flex-wrap: wrap; 
             margin-bottom: 24px; 
         }
-        
         .stat-cards .mdui-card { 
             flex: 1; 
             min-width: 180px; 
         }
-        
         .stat-cards .mdui-card-content { 
             text-align: center; 
             padding: 20px 16px; 
         }
-        
         .stat-value { 
             font-size: 32px; 
             font-weight: bold; 
         }
-        
         .stat-label { 
             font-size: 14px; 
             color: #757575; 
             margin-top: 4px; 
         }
-        
         .score-positive { 
             color: #4CAF50; 
         }
-        
         .score-negative { 
             color: #2196F3; 
         }
-        
         .score-zero { 
             color: #212121; 
         }
-        
         .empty-state { 
             text-align: center; 
             padding: 60px 20px; 
             color: #9e9e9e; 
         }
-        
         .empty-state i { 
             font-size: 64px; 
             display: block; 
             margin-bottom: 16px; 
         }
-        
         .mdui-table td, 
         .mdui-table th { 
             white-space: nowrap; 
         }
-        
         .period-info { 
             padding: 16px; 
             background: #fff; 
@@ -162,7 +130,6 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             margin-bottom: 16px; 
             border-left: 4px solid #2196F3; 
         }
-        
         .filter-bar { 
             display: flex; 
             gap: 12px; 
@@ -170,7 +137,6 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             align-items: center; 
             margin-bottom: 16px; 
         }
-        
         .pagination { 
             display: flex; 
             justify-content: center; 
@@ -179,7 +145,6 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             padding: 16px 0; 
             flex-wrap: wrap; 
         }
-        
         .pagination a, 
         .pagination span { 
             display: inline-block; 
@@ -192,33 +157,27 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             color: #333; 
             cursor: pointer; 
         }
-        
         .pagination a { 
             background: #f5f5f5; 
         }
-        
         .pagination a:hover { 
             background: #e0e0e0; 
         }
-        
         .pagination .active { 
             background: #2196F3; 
             color: #fff; 
         }
-        
         .pagination .disabled { 
             color: #ccc; 
             background: #fafafa; 
             cursor: default; 
         }
-        
         .tab-bar { 
             display: flex; 
             gap: 0; 
             margin-bottom: 16px; 
             border-bottom: 2px solid #e0e0e0; 
         }
-        
         .tab-bar .tab-btn { 
             padding: 10px 24px; 
             cursor: pointer; 
@@ -230,24 +189,19 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             margin-bottom: -2px; 
             transition: all .2s; 
         }
-        
         .tab-bar .tab-btn.active { 
             color: #2196F3; 
             border-bottom-color: #2196F3; 
         }
-        
         .tab-bar .tab-btn:hover { 
             color: #2196F3; 
         }
-        
         .dialog-form { 
             padding: 16px 0; 
         }
-        
         .dialog-form .mdui-textfield { 
             width: 100%; 
         }
-        
         .checkbox-grid { 
             display: flex; 
             flex-wrap: wrap; 
@@ -255,26 +209,22 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             max-height: 300px; 
             overflow-y: auto; 
         }
-        
         .checkbox-grid label { 
             display: inline-flex; 
             align-items: center; 
             gap: 4px; 
             cursor: pointer; 
         }
-        
         @media (max-width: 600px) {
             .quick-actions, 
             .stat-cards { 
                 flex-direction: column; 
             }
-            
             .filter-bar { 
                 flex-direction: column; 
                 align-items: stretch; 
             }
         }
-        
         .main-content {
             padding-top: 72px;
         }
@@ -293,7 +243,7 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
         <!-- 网站标题 -->
         <span class="mdui-typo-title toolbar-title">后台管理</span>
         
-        <!-- 用户信息菜单（参考示例的下拉菜单） -->
+        <!-- 用户信息菜单 -->
         <a href="#" class="mdui-list-item mdui-float-right" mdui-menu="{target: '#user-menu'}">
             <i class="mdui-list-item-icon mdui-icon material-icons">account_box</i>
         </a>
@@ -315,7 +265,7 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
     </div>
 </header>
 
-<!-- 侧边导航 - 参考示例的抽屉栏结构修改 -->
+<!-- 侧边导航 -->
 <div class="mdui-drawer" id="admin-drawer">
     <div class="mdui-list" mdui-collapse="{accordion: true}" style="margin-bottom: 68px;">
         <!-- 顶部标题 -->
@@ -324,35 +274,15 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
         </div>
         <div class="mdui-divider" style="margin: 8px 0;"></div>
         
-        <!-- 导航菜单项（一级菜单） -->
+        <!-- 导航菜单项 -->
         <?php foreach ($navItems as $key => $item):
             $activeClass = ($page === $key) ? ' mdui-list-item-active' : '';
-            // 假设$item中包含是否为折叠菜单的标识，如has_children
-            if (empty($item['children'])):
         ?>
         <a href="index.php?page=<?php echo $key; ?>" class="mdui-list-item mdui-ripple<?php echo $activeClass; ?>">
             <i class="mdui-list-item-icon mdui-icon material-icons"><?php echo $item['icon']; ?></i>
             &emsp;<?php echo $item['text']; ?>
         </a>
-        <?php else: ?>
-        <!-- 折叠菜单（参考示例的mdui-collapse） -->
-        <div class="mdui-collapse-item">
-            <div class="mdui-collapse-item-header mdui-list-item mdui-ripple<?php echo $activeClass; ?>">
-                <i class="mdui-list-item-icon mdui-icon material-icons"><?php echo $item['icon']; ?></i>
-                &emsp;<?php echo $item['text']; ?>
-                <i class="mdui-collapse-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
-            </div>
-            <div class="mdui-collapse-item-body mdui-list">
-                <?php foreach ($item['children'] as $childKey => $childItem):
-                    $childActive = ($page === $childKey) ? ' mdui-list-item-active' : '';
-                ?>
-                <a href="index.php?page=<?php echo $childKey; ?>" class="mdui-list-item mdui-ripple<?php echo $childActive; ?>">
-                    <?php echo $childItem['text']; ?>
-                </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; endforeach; ?>
+        <?php endforeach; ?>
         
         <!-- 分隔线 -->
         <div class="mdui-divider" style="margin: 8px 0;"></div>
@@ -392,76 +322,4 @@ $currentScript = basename($_SERVER['SCRIPT_NAME']);
             </div>
         </div>
         <?php endif; ?>
-        
-        <!-- 页面主要内容 -->
-        <div id="main-content">
-            <?php 
-            // 这里放置您的主要页面内容
-            ?>
-        </div>
-    </div>
-</div>
 
-<script>
-// 全局函数定义
-function $h(str) {
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function checkResponse(res) {
-    if (res && res.error) {
-        if (res.error.indexOf('权限') !== -1 || res.error.indexOf('无权') !== -1) {
-            showError(res.error);
-        } else {
-            showToast(res.error, 'error');
-        }
-        return true;
-    }
-    return false;
-}
-
-function handleAjaxFail(jqXHR) {
-    var msg = '网络错误';
-    try {
-        var r = JSON.parse(jqXHR.responseText);
-        if (r.error) msg = r.error;
-    } catch(e) {}
-    if (msg.indexOf('权限') !== -1 || msg.indexOf('无权') !== -1) {
-        showError(msg);
-    } else {
-        showToast(msg, 'error');
-    }
-}
-
-function showError(msg) {
-    mdui.dialog({
-        title: '提示',
-        content: msg,
-        buttons: [{ text: '确定' }]
-    });
-}
-
-function showToast(msg, type) {
-    var color = type === 'success' ? '#4CAF50' : (type === 'error' ? '#f44336' : '#2196F3');
-    mdui.snackbar({
-        message: msg,
-        position: 'right-top',
-        backgroundColor: color
-    });
-}
-
-// 首次登录修改密码对话框
-$(function() {
-    <?php if ($mustChangePwd): ?>
-    var dialog = new mdui.Dialog('#must-change-pwd-dialog', { 
-        modal: true, 
-        history: false,
-        closeOnEsc: false,
-        closeOnCancel: false
-    });
-    
-    dialog.open();
-    
-    $('#pwd-submit-btn').click(function() {
